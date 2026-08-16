@@ -1,0 +1,75 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### macOS ###
+.DS_Store
+
+### Local AI tool settings ###
+.claude/settings.local.json
+
+### Recordings and generated transcripts ###
+*.mp3
+*.m4a
+*.wav
+*.flac
+*.aac
+*.ogg
+*.srt
+*.vtt
+part_*.txt
+part_*.json
+*_all.txt
+transcribe_*/
+
+### Whisper models ###
+*.bin
+models/
+
+### Secrets and local credentials ###
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+### Local development notes ###
+AGENTS.md
+CLAUDE.md
+MAC_UBUNTU_移行メモ.md
+docs/CLAUDE_CODE_PROMPTS*.md
+docs/PLAN.md
+docs/作業ログ_*.md

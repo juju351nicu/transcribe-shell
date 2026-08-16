@@ -1,0 +1,4 @@
+/mvnw text eol=lf
+*.cmd text eol=crlf
+# CRLF になると Mac/Linux で "bad interpreter" になるため、シェルスクリプトは必ず LF で扱う。
+*.sh text eol=lf
