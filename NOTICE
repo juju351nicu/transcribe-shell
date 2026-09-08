@@ -1,0 +1,30 @@
+transcribe-shell
+Copyright 2026 juju351nicu
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+================================================================================
+Bundled dependencies
+================================================================================
+
+The executable jar produced by this project embeds its dependencies. The two
+that are worth calling out here:
+
+  whisper-ffm  (jp.clip:whisper-ffm)
+    https://github.com/juju351nicu/whisper-ffm
+    Copyright 2026 juju351nicu
+    Licensed under the Apache License, Version 2.0
+
+    Its jar bundles the whisper.cpp shared libraries (whisper, ggml, ggml-base,
+    ggml-cpu) and the silero VAD model, both under the MIT License. The full
+    MIT text ships inside that jar as META-INF/LICENSE-whisper.cpp.txt, along
+    with its own LICENSE and NOTICE.
+
+  Spring Boot / Spring Shell
+    https://spring.io/projects/spring-boot
+    Copyright 2012-2026 the original author or authors
+    Licensed under the Apache License, Version 2.0
+
+External programs invoked as separate processes - ffmpeg, whisper-ctranslate2,
+openai-whisper and whisper-cli - are NOT distributed with this project. They are
+installed and licensed separately by the user.

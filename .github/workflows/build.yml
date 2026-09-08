@@ -1,0 +1,61 @@
+# テストを毎回 GitHub 上で走らせる。
+#
+# 面倒なのは jp.clip:whisper-ffm が Maven Central に無いこと。そこで CI では毎回
+# whisper-ffm を clone して publishToMavenLocal し、~/.m2 に入れてから mvnw を叩く。
+# 将来 whisper-ffm を Maven Central 等へ公開したら、その 2 ステップは消せる。
+#
+# ネイティブライブラリ（whisper.dll 等）は入れない。transcribe-shell のテストは
+# ffmpeg も whisper.cpp も実行せず（いずれもモックに差し替えている）、
+# 組み立てた設定・オプションだけを検証しているため、Linux でもそのまま通る。
+name: build
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+# junit-report がテスト結果を Checks に書くための権限
+permissions:
+    contents: read
+    checks: write
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout transcribe-shell
+                uses: actions/checkout@v4
+
+            # submodules: recursive が必要。whisper-ffm の jar タスクは whisper.cpp の
+            # LICENSE（submodule 内）を同梱するので、無いと明示的に失敗する。
+            -   name: Checkout whisper-ffm
+                uses: actions/checkout@v4
+                with:
+                    repository: juju351nicu/whisper-ffm
+                    path: whisper-ffm
+                    submodules: recursive
+
+            -   uses: actions/setup-java@v5
+                with:
+                    java-version: 25
+                    distribution: 'temurin'
+                    cache: maven
+
+            -   name: Install whisper-ffm into the local Maven repository
+                working-directory: whisper-ffm
+                run: |
+                    chmod +x ./gradlew
+                    ./gradlew --no-daemon publishToMavenLocal
+
+            -   name: Test
+                run: |
+                    chmod +x ./mvnw
+                    ./mvnw -B --no-transfer-progress verify
+
+            -   name: Publish test report
+                uses: mikepenz/action-junit-report@v5
+                if: success() || failure()
+                with:
+                    report_paths: 'target/surefire-reports/TEST-*.xml'
