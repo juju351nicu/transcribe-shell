@@ -1,4 +1,13 @@
-/mvnw text eol=lf
-*.cmd text eol=crlf
+# 既定: リポジトリには LF で保存し、チェックアウト時に各 OS の改行へ変換する。
+# これが無いと、Windows の CRLF 作業ツリーが git から常に「変更あり」に見える
+# （実際に 37 ファイルがその状態になっていた。内容は同一で改行だけの差）。
+* text=auto
+
+# 以下は OS 固有の改行を強制する。.gitattributes は後の行が優先される。
 # CRLF になると Mac/Linux で "bad interpreter" になるため、シェルスクリプトは必ず LF で扱う。
+/mvnw text eol=lf
 *.sh text eol=lf
+
+# 逆に Windows のバッチは CRLF でないと label/goto が誤動作することがある。
+*.cmd text eol=crlf
+*.bat text eol=crlf
