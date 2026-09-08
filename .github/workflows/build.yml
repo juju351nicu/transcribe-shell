@@ -28,12 +28,17 @@ jobs:
             -   name: Checkout transcribe-shell
                 uses: actions/checkout@v4
 
+            # ref は必ずタグで固定する。main を追うと、whisper-ffm が 2.0.3 になった瞬間に
+            # 「CI は 2.0.3 を publish するが pom.xml は 2.0.2 を要求する」で CI だけが落ちる。
+            # pom.xml の <version> を上げるときは、ここの ref も同じタグへ上げること。
+            #
             # submodules: recursive が必要。whisper-ffm の jar タスクは whisper.cpp の
             # LICENSE（submodule 内）を同梱するので、無いと明示的に失敗する。
             -   name: Checkout whisper-ffm
                 uses: actions/checkout@v4
                 with:
                     repository: juju351nicu/whisper-ffm
+                    ref: v2.0.2
                     path: whisper-ffm
                     submodules: recursive
 
