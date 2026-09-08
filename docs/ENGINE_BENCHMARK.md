@@ -217,3 +217,68 @@ $gz = New-Object System.IO.Compression.GZipStream($ms, [System.IO.Compression.Co
 $gz.Write($bytes, 0, $bytes.Length); $gz.Close()
 "圧縮比: {0}" -f [math]::Round($bytes.Length / $ms.ToArray().Length, 2)
 ```
+
+---
+
+## 追記: 4 番目のエンジン — FFM（`transcribe-cpp`、2026-09-08）
+
+whisper.cpp を**外部バイナリではなく JVM 内から FFM（Panama）で直接呼ぶ**経路を追加した。
+ライブラリは [whisper-ffm](https://github.com/juju351nicu/whisper-ffm)（`jp.clip:whisper-ffm`）で、
+whisper.cpp v1.9.3 のネイティブを jar に同梱している。Windows は追加インストールが要らない。
+コマンドは `transcribe-cpp` / `transcribe-cpp-all`、設定は `transcribe.ffm.*`（`transcribe.whisper.cpp.*` とは別）。
+
+### 速度（Windows / i5-1335U / CPU / small）
+
+| 音声 | エンジン | 処理時間 | RTF |
+|---|---|---|---|
+| 42.6 分 × 6 本（計 3 時間 20 分） | faster (int8) | 約 2 時間 | 0.56〜0.63 |
+| 同上 | FFM（VAD on） | 約 35 分 | 0.17〜0.19 |
+| 31 分 | FFM（VAD off = 既定） | 8 分 32 秒 | 0.28 |
+| 12 分 38 秒 | FFM（VAD off = 既定） | 257 秒 | 0.34 |
+
+この PC では **FFM が faster の 2.3〜3.5 倍速い**。VAD を on にすると更に速いが、下記の理由で既定は off。
+
+### VAD は既定 off（`transcribe.ffm.vad=false`）
+
+whisper.cpp の VAD は発話区間を繋ぎ合わせてから認識するため、繋ぎ目付近の文をまるごと落とす。
+31 分の会議で比較すると VAD on 4,993 文字・4 分、VAD off 7,195 文字・8 分 32 秒、faster 7,557 文字・20 分 31 秒。
+余白（`vad-speech-pad-ms` 30 → 300 → 500）やしきい値（0.5 → 0.35）を振っても 5,247 / 5,183 文字までしか戻らず、
+落ちているのは短い発話ではなく文まるごとだった。議事録用途では網羅性を優先して off。
+
+### デコーダの既定はライブラリ（= whisper.cpp）と意図的に違える
+
+| 設定 | このアプリ | whisper.cpp | 実測での理由 |
+|---|---|---|---|
+| `best-of` | -1 | 5 | 5 にしても処理時間は同じ（244 対 257 秒）、文字数はむしろ 2.6% 減、繰り返しの差も無し |
+| `temperature-increment` | 0.4 | 0.2 | 同上 |
+| `beam-size` | 2 | 5 | 速度優先（greedy 既定なので通常は効かない） |
+| `suppress-non-speech-tokens` | true | false | 記号の注記が邪魔。ただし whisper.cpp の抑制対象は固定の記号リストのみで `【】` は含まれない |
+
+### 繰り返しループ: `-mc 0` に相当する手が使えない
+
+whisper-cli 側は `-mc 0`（`n_max_text_ctx=0`）で文脈の引き継ぎを切っているが、FFM 側で同じ値にすると
+**初期プロンプト（参加者名のヒント）も無効になる**。whisper.cpp のプロンプト構築が
+`if (n_max_text_ctx > 0)` の中にあるため。参加者名の効果は実測で確認できている（ある姓が 4 → 7 回、
+別の姓が 0 → 5 回、正しく出るようになった）ので、これを捨てる選択は取らなかった。
+
+代わりに `carry-initial-prompt=true`（初期プロンプトを毎ウィンドウ前置）を試したが**採用しなかった**。
+
+| 条件（12 分 38 秒 / small / VAD off / プロンプトあり） | 文字数 | 行数 | 時間 | 3 行以上の繰り返し | 姓A / 姓B |
+|---|---|---|---|---|---|
+| 既定 | 3,542 | 93 | 257 秒 | 0 行 | 2 / 0 |
+| `carry-initial-prompt=true` | 4,713 | 166 | 271 秒 | **42 行** | **7 / 1** |
+
+固有名詞には効いたが、**初期プロンプト自身が出力に漏れて同じ 1 行が 42 行連続**した。
+プロンプトの影響力を上げる機構であって、上げすぎると復唱を招く。繰り返しループの対策には使えない。
+
+**未解決**: FFM 側の繰り返しループへの有効な対策はまだ無い。VAD off の 31 分の会議では
+「私は、私のビデオを紹介します。」が 8 行続く例が出ている（全体に対しては小さい）。
+候補は、区間ごとに `whisper_full` を分けて呼ぶ（whisper.cpp 内蔵 VAD のように繋ぎ合わせない）、
+出力側で繰り返しを検出して該当区間だけ温度を変えて再処理する、など。いずれも未実装。
+
+### 移植の検証
+
+pr-work 側で先に作った実装をこのリポジトリへ移す際、同じ音声・同じ設定で出力が
+**MD5 まで一致**することを確認した（`6c889e87c4ce7b7f9db6202ce69c6627`）。
+また JNI 実装から FFM へ移行したときも、31 分の実録音で JNI 版と MD5 が一致している
+（whisper-ffm の `docs/plan-ffm-v2.md`）。
