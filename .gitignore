@@ -51,7 +51,7 @@ part_*.txt
 part_*.json
 *_all.txt
 transcribe_*/
-transcribe-cpp_*/
+transcribe-ffm_*/
 
 ### Whisper models ###
 *.bin
@@ -77,3 +77,6 @@ MAC_UBUNTU_移行メモ.md
 docs/CLAUDE_CODE_PROMPTS*.md
 docs/PLAN.md
 docs/作業ログ_*.md
+
+### CI をローカルで再現したときの作業用 ###
+/whisper-ffm/

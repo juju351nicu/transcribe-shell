@@ -15,10 +15,11 @@ import lombok.RequiredArgsConstructor;
 /**
  * MP3 を分割し、whisper.cpp を FFM（JVM 内）で呼んで文字起こしし、1 ファイルに結合するコマンド。
  *
- * <p>コマンド名は歴史的に {@code transcribe-cpp} だが、実装は FFM で、設定は {@code transcribe.ffm.*}。
- * 外部バイナリ {@code whisper-cli} を使う経路は {@code transcribe --engine cpp}（設定は
- * {@code transcribe.whisper.cpp.*}）で、こちらとは別物。使い分けは README の
- * 「どのエンジンを選ぶか」を参照。
+ * <p>設定は {@code transcribe.ffm.*}。外部バイナリ {@code whisper-cli} を使う経路は
+ * {@code transcribe --engine cpp}（設定は {@code transcribe.whisper.cpp.*}）で、こちらとは別物。
+ * どちらも中身は whisper.cpp なので、旧名 {@code transcribe-cpp} だと {@code --engine cpp} と
+ * 区別が付かなかった。そのため {@code transcribe-ffm} に改名し、旧名は {@code alias} で残してある。
+ * 使い分けは README の「どのエンジンを選ぶか」を参照。
  *
  * <p>オプションの並びと位置引数の扱いは {@code transcribe} と揃え、追加分は
  * {@code --threads}・{@code --vad}・{@code --prompt}・{@code --beam-search} のみ。
@@ -30,8 +31,11 @@ public class TranscribeFfmCommand {
 
 	private final FfmTranscribeService ffmTranscribeService;
 
-	@Command(name = "transcribe-cpp", description = "MP3を分割しwhisper.cpp(FFM)で文字起こしして結合する")
-	public String transcribeCpp(
+	// alias は旧名。1 週間の試用で作った transcribe-cpp_* の出力や手元のメモが残っているので、
+	// しばらくはどちらでも動くようにしておく
+	@Command(name = "transcribe-ffm", alias = "transcribe-cpp",
+			description = "MP3を分割しwhisper.cpp(FFM)で文字起こしして結合する")
+	public String transcribeFfm(
 			@Argument(index = 0, description = "入力MP3の絶対パス（-f の代わりに先頭に直接指定）", defaultValue = "")
 			String positionalFile,
 			@Option(shortName = 'f', longName = "file", description = "入力MP3の絶対パス（位置引数でも可）")
@@ -42,7 +46,7 @@ public class TranscribeFfmCommand {
 			String language,
 			@Option(longName = "segment-time", description = "分割秒数(既定600=10分)", defaultValue = "600")
 			int segmentTime,
-			@Option(shortName = 'o', longName = "output-dir", description = "出力フォルダ(省略時は入力と同階層のtranscribe-cpp_<base>)")
+			@Option(shortName = 'o', longName = "output-dir", description = "出力フォルダ(省略時は入力と同階層のtranscribe-ffm_<base>)")
 			String outputDir,
 			@Option(longName = "force", description = "文字起こし済みpartも再実行する", defaultValue = "false")
 			boolean force,
@@ -78,14 +82,9 @@ public class TranscribeFfmCommand {
 			return "エラー: 外部コマンドを起動できません -> " + e.getExecutable()
 					+ "\n  設定 transcribe.ffmpeg-path で実行ファイルのパスを指定できます。";
 		} catch (IllegalStateException e) {
-			// 分割・文字起こしの実行失敗
+			// 分割・文字起こしの実行失敗。ネイティブが読み込めない場合の
+			// NativeUnavailableException もこの部分型なので、案内文はそのまま表示される
 			return "エラー: " + e.getMessage();
-		} catch (UnsatisfiedLinkError e) {
-			// Windows 以外では jar にネイティブが同梱されていない
-			return "エラー: whisper.cpp のネイティブライブラリを読み込めません。"
-					+ "\n  この OS 用のライブラリが jar に同梱されていない可能性があります。"
-					+ "\n  transcribe --engine cpp（外部の whisper-cli）を使うか、whisper-ffm をこの OS でビルドしてください。"
-					+ "\n  詳細: " + e.getMessage();
 		}
 	}
 
@@ -104,7 +103,7 @@ public class TranscribeFfmCommand {
 		}
 		if (!hasPositional && !hasOption) {
 			throw new IllegalArgumentException(
-					"ファイルを指定してください（例: transcribe-cpp \"C:\\...\\xxx.MP3\" もしくは -f \"C:\\...\\xxx.MP3\"）");
+					"ファイルを指定してください（例: transcribe-ffm \"C:\\...\\xxx.MP3\" もしくは -f \"C:\\...\\xxx.MP3\"）");
 		}
 		return hasPositional ? positionalFile : fileOption;
 	}

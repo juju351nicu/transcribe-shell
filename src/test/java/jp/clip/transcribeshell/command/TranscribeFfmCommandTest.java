@@ -53,9 +53,24 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\a.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp -f C:\\a.mp3");
+		client.sendCommand("transcribe-ffm -f C:\\a.mp3");
 
 		verify(ffmTranscribeService).run("C:\\a.mp3", expected);
+	}
+
+	/**
+	 * 旧名 {@code transcribe-cpp} も {@code @Command(alias = ...)} で受け付けること。
+	 * 1 週間の試用で手元のメモやバッチに旧名が残っているので、黙って使えなくなると困る。
+	 */
+	@Test
+	void 旧名のtranscribe_cppでも同じコマンドが動く() throws Exception {
+		FfmOptions expected = defaults();
+		given(ffmTranscribeService.run(eq("C:\\alias.mp3"), eq(expected)))
+				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
+
+		client.sendCommand("transcribe-cpp -f C:\\alias.mp3");
+
+		verify(ffmTranscribeService).run("C:\\alias.mp3", expected);
 	}
 
 	@Test
@@ -74,7 +89,7 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\b.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp -f C:\\b.mp3 -m large-v3-turbo-q5_0 -l ja --segment-time 300"
+		client.sendCommand("transcribe-ffm -f C:\\b.mp3 -m large-v3-turbo-q5_0 -l ja --segment-time 300"
 				+ " -o C:\\out --force -t 8 --vad true --beam-search true -p 田中さん");
 
 		verify(ffmTranscribeService).run("C:\\b.mp3", expected);
@@ -86,7 +101,7 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\c.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp C:\\c.mp3 --vad false");
+		client.sendCommand("transcribe-ffm C:\\c.mp3 --vad false");
 
 		verify(ffmTranscribeService).run("C:\\c.mp3", expected);
 	}
@@ -99,7 +114,7 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\flag.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp C:\\flag.mp3 --vad");
+		client.sendCommand("transcribe-ffm C:\\flag.mp3 --vad");
 
 		verify(ffmTranscribeService).run("C:\\flag.mp3", expected);
 	}
@@ -110,7 +125,7 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\pos.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp C:\\pos.mp3");
+		client.sendCommand("transcribe-ffm C:\\pos.mp3");
 
 		verify(ffmTranscribeService).run("C:\\pos.mp3", expected);
 	}
@@ -122,14 +137,14 @@ class TranscribeFfmCommandTest {
 		given(ffmTranscribeService.run(eq("C:\\d.mp3"), eq(expected)))
 				.willReturn(new TranscribeResult(Path.of("dummy"), true, 1));
 
-		client.sendCommand("transcribe-cpp C:\\d.mp3 --prompt \"" + prompt + "\"");
+		client.sendCommand("transcribe-ffm C:\\d.mp3 --prompt \"" + prompt + "\"");
 
 		verify(ffmTranscribeService).run("C:\\d.mp3", expected);
 	}
 
 	@Test
 	void 位置引数と_fの両方を指定するとエラーで処理は呼ばれない() throws Exception {
-		ShellScreen screen = client.sendCommand("transcribe-cpp C:\\a.mp3 -f C:\\b.mp3");
+		ShellScreen screen = client.sendCommand("transcribe-ffm C:\\a.mp3 -f C:\\b.mp3");
 
 		assertThat(String.join("\n", screen.lines())).contains("どちらか一方");
 		verifyNoInteractions(ffmTranscribeService);
@@ -137,7 +152,7 @@ class TranscribeFfmCommandTest {
 
 	@Test
 	void ファイル未指定はエラーで処理は呼ばれない() throws Exception {
-		ShellScreen screen = client.sendCommand("transcribe-cpp");
+		ShellScreen screen = client.sendCommand("transcribe-ffm");
 
 		assertThat(String.join("\n", screen.lines())).contains("ファイルを指定してください");
 		verifyNoInteractions(ffmTranscribeService);

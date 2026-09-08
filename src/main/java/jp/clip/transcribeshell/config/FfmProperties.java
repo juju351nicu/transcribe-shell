@@ -8,16 +8,16 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * {@code transcribe-cpp} コマンド（whisper.cpp を FFM で JVM 内から直接呼ぶ）の設定。
+ * {@code transcribe-ffm} コマンド（whisper.cpp を FFM で JVM 内から直接呼ぶ）の設定。
  *
  * <p>whisper.cpp を使う経路はこのアプリに 2 つある。混同しないよう設定プレフィックスで分けている。
  * <ul>
  * <li>{@code transcribe.whisper.cpp.*} … {@code transcribe --engine cpp}。外部バイナリ {@code whisper-cli} を起動する</li>
- * <li>{@code transcribe.ffm.*}（このクラス） … {@code transcribe-cpp}。jar 同梱のネイティブを JVM 内から呼ぶ</li>
+ * <li>{@code transcribe.ffm.*}（このクラス） … {@code transcribe-ffm}。jar 同梱のネイティブを JVM 内から呼ぶ</li>
  * </ul>
  *
  * <p>Windows は同梱の DLL がそのまま使えるため追加インストールが不要。Mac / Linux は
- * whisper.cpp のライブラリを自分でビルドして jar に同梱するまで {@code transcribe-cpp} は使えないので、
+ * whisper.cpp のライブラリを自分でビルドして jar に同梱するまで {@code transcribe-ffm} は使えないので、
  * それらの OS では {@code transcribe --engine cpp}（whisper-cli）を使う。
  *
  * <p>既定値の方針: <b>ライブラリ（whisper-ffm）の既定は whisper.cpp と同じ値</b>で、
@@ -106,7 +106,8 @@ public class FfmProperties {
 	 * <p>whisper.cpp は 30 秒ウィンドウごとに前の出力を次のプロンプトへ引き継ぐため、これが繰り返しループの
 	 * 伝播経路になる。0 にすると引き継ぎは止まるが、<b>{@link #initialPrompt} も無効になる</b>
 	 * （whisper.cpp のプロンプト構築が {@code if (n_max_text_ctx > 0)} の中にあるため）。
-	 * 参加者名のヒントを使うなら、ここは既定のままにして {@link #carryInitialPrompt} を true にする。
+	 * 参加者名のヒントを使うなら、ここは既定のままにする（{@link #carryInitialPrompt} は実測の結果
+	 * 不採用。理由はそちらの Javadoc を参照）。
 	 */
 	private int maxTextContext = 16384;
 
@@ -114,8 +115,13 @@ public class FfmProperties {
 	 * 初期プロンプトを毎ウィンドウの先頭に付け直すか（{@code carry_initial_prompt}）。whisper.cpp の既定は false。
 	 *
 	 * <p>true にすると引き継ぎバッファが今回のウィンドウの出力だけになり、初期プロンプトは静的な別枠として
-	 * 毎ウィンドウ前置される。固有名詞のヒントを音声全体に効かせたまま繰り返しの伝播を短く抑えられる。
-	 * 未実測のため既定は whisper.cpp と同じ false。試すときは {@code -Dtranscribe.ffm.carry-initial-prompt=true}。
+	 * 毎ウィンドウ前置される。
+	 *
+	 * <p><b>2026-09-08 に実測して不採用にした。</b>固有名詞は確かに良くなった（姓A 2→7 件、姓B 0→1 件）が、
+	 * 毎ウィンドウ前置される初期プロンプトそのものが出力に混ざり、同じ行が 42 回繰り返された。
+	 * そのため既定は whisper.cpp と同じ false のまま。固有名詞だけを狙うなら
+	 * {@link #initialPrompt} を 10 名前後に絞る方が効く。
+	 * 経緯と数値は {@code docs/ENGINE_BENCHMARK.md} を参照。
 	 */
 	private boolean carryInitialPrompt = false;
 

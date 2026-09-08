@@ -23,6 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import jp.clip.transcribeshell.service.FfmOptions;
 import jp.clip.transcribeshell.service.FfmTranscribeService;
+import jp.clip.transcribeshell.service.NativeUnavailableException;
 import jp.clip.transcribeshell.service.TranscribeResult;
 
 /**
@@ -46,14 +47,14 @@ class TranscribeFfmAllCommandTest {
 		Files.createFile(dir.resolve("a.mp3"));
 		Files.createFile(dir.resolve("part_000.mp3"));
 		Files.createFile(dir.resolve("memo.txt"));
-		Files.createDirectory(dir.resolve("transcribe-cpp_a"));
-		Files.createFile(dir.resolve("transcribe-cpp_a").resolve("part_000.wav"));
+		Files.createDirectory(dir.resolve("transcribe-ffm_a"));
+		Files.createFile(dir.resolve("transcribe-ffm_a").resolve("part_000.wav"));
 
 		given(ffmTranscribeService.run(any(), any())).willReturn(new TranscribeResult(Path.of("x"), true, 1));
 
-		ShellScreen screen = client.sendCommand("transcribe-cpp-all -d " + dir);
+		ShellScreen screen = client.sendCommand("transcribe-ffm-all -d " + dir);
 
-		// 出力フォルダは null（各ファイルの同階層に transcribe-cpp_<base>）、その他は既定値
+		// 出力フォルダは null（各ファイルの同階層に transcribe-ffm_<base>）、その他は既定値
 		FfmOptions expected = FfmOptions.builder()
 				.model("small")
 				.language("Japanese")
@@ -73,7 +74,7 @@ class TranscribeFfmAllCommandTest {
 		Files.createFile(dir.resolve("a.mp3"));
 		given(ffmTranscribeService.run(any(), any())).willReturn(new TranscribeResult(Path.of("x"), true, 1));
 
-		client.sendCommand("transcribe-cpp-all -d " + dir
+		client.sendCommand("transcribe-ffm-all -d " + dir
 				+ " -m large-v3-turbo-q5_0 -l ja -t 8 --vad true --beam-search true --force -p 田中さん");
 
 		FfmOptions expected = FfmOptions.builder()
@@ -99,15 +100,50 @@ class TranscribeFfmAllCommandTest {
 		given(ffmTranscribeService.run(eq(dir.resolve("ok.mp3").toString()), any()))
 				.willReturn(new TranscribeResult(Path.of("y"), false, 0));
 
-		ShellScreen screen = client.sendCommand("transcribe-cpp-all -d " + dir);
+		ShellScreen screen = client.sendCommand("transcribe-ffm-all -d " + dir);
 
 		verify(ffmTranscribeService).run(eq(dir.resolve("ok.mp3").toString()), any());
 		assertThat(String.join("\n", screen.lines())).contains("処理: 0件 / スキップ: 1件 / 失敗: 1件");
 	}
 
+	/**
+	 * ネイティブが読み込めない場合は 1 件目で打ち切ること。
+	 *
+	 * <p>以前は {@code catch(Exception)} だけだったため、{@code UnsatisfiedLinkError}（{@code Error}）が
+	 * 突き抜けてバッチが異常終了していた。{@link NativeUnavailableException} に変換したうえで、
+	 * 残りを試さずに中断する。
+	 */
+	@Test
+	void ネイティブが読み込めない場合は残りを試さず中断する(@TempDir Path dir) throws Exception {
+		Files.createFile(dir.resolve("a.mp3"));
+		Files.createFile(dir.resolve("b.mp3"));
+
+		given(ffmTranscribeService.run(eq(dir.resolve("a.mp3").toString()), any()))
+				.willThrow(new NativeUnavailableException(new UnsatisfiedLinkError("whisper.dll がありません")));
+
+		ShellScreen screen = client.sendCommand("transcribe-ffm-all -d " + dir);
+
+		// 2 件目は呼ばれない
+		verify(ffmTranscribeService).run(eq(dir.resolve("a.mp3").toString()), any());
+		verifyNoMoreInteractions(ffmTranscribeService);
+		assertThat(String.join("\n", screen.lines())).contains("中断");
+	}
+
+	/** 旧名 {@code transcribe-cpp-all} も alias で受け付けること。 */
+	@Test
+	void 旧名のtranscribe_cpp_allでも同じコマンドが動く(@TempDir Path dir) throws Exception {
+		Files.createFile(dir.resolve("a.mp3"));
+		given(ffmTranscribeService.run(any(), any())).willReturn(new TranscribeResult(Path.of("x"), true, 1));
+
+		ShellScreen screen = client.sendCommand("transcribe-cpp-all -d " + dir);
+
+		verify(ffmTranscribeService).run(eq(dir.resolve("a.mp3").toString()), any());
+		assertThat(String.join("\n", screen.lines())).contains("処理: 1件");
+	}
+
 	@Test
 	void 存在しないフォルダはエラーを返す() throws Exception {
-		ShellScreen screen = client.sendCommand("transcribe-cpp-all -d C:\\no\\such\\dir_xyz");
+		ShellScreen screen = client.sendCommand("transcribe-ffm-all -d C:\\no\\such\\dir_xyz");
 
 		assertThat(String.join("\n", screen.lines())).contains("フォルダが見つかりません");
 	}

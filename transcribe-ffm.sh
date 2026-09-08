@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# transcribe-cpp launcher (Mac / Linux).
-#   ./transcribe-cpp.sh "/path/to/xxx.mp3" [options]
+# transcribe-ffm launcher (Mac / Linux).
+#   ./transcribe-ffm.sh "/path/to/xxx.mp3" [options]
 #
 # whisper.cpp を JVM 内から FFM で呼ぶ（Python も whisper-cli も不要）。
 # --enable-native-access は FFM の downcall に必要。付けないと JDK が警告を出す。
@@ -20,4 +20,4 @@ if [[ ! -f "$JAR" ]]; then
 fi
 
 exec java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" \
-  -jar "$JAR" transcribe-cpp "$@"
+  -jar "$JAR" transcribe-ffm "$@"

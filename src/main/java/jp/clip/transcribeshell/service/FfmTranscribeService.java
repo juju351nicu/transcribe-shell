@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * {@code transcribe-cpp}（whisper.cpp を FFM で JVM 内から呼ぶ）の一連の流れをまとめる。
+ * {@code transcribe-ffm}（whisper.cpp を FFM で JVM 内から呼ぶ）の一連の流れをまとめる。
  *
  * <p>手順は {@link TranscribeService} と同じで各ステップが冪等だが、2 点だけ違う。
  * <ul>
@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  * 分割は {@link FfmpegService}、結合は {@link TranscriptMergeService} をそのまま再利用する。
  *
- * <p>出力フォルダの既定は {@code transcribe-cpp_<base>}。{@code transcribe} の {@code transcribe_<base>} と
+ * <p>出力フォルダの既定は {@code transcribe-ffm_<base>}。{@code transcribe} の {@code transcribe_<base>} と
  * 分けているのは、同じ録音を両エンジンで処理して比べられるようにするためと、
  * {@code part_*.mp3} と {@code part_*.wav} が混ざらないようにするため。
  */
@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FfmTranscribeService {
 
 	/** 既定の出力フォルダ名の接頭辞。{@code transcribe} 系の {@code transcribe_} と区別する。 */
-	static final String OUTPUT_DIR_PREFIX = "transcribe-cpp_";
+	static final String OUTPUT_DIR_PREFIX = "transcribe-ffm_";
 
 	private final FfmpegService ffmpegService;
 	private final FfmWhisperService ffmWhisperService;
@@ -73,7 +73,7 @@ public class FfmTranscribeService {
 	}
 
 	/**
-	 * 出力フォルダを決める。指定があればそのまま、無ければ入力と同階層の {@code transcribe-cpp_<base>}。
+	 * 出力フォルダを決める。指定があればそのまま、無ければ入力と同階層の {@code transcribe-ffm_<base>}。
 	 */
 	Path resolveOutputDir(Path src, String outputDir, String base) {
 		if (StringUtils.hasText(outputDir)) {

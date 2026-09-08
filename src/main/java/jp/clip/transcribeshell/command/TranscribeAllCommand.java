@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  * 「処理／スキップ／失敗」の件数サマリを出す。毎晩の自動実行で「昨夜、新規が何件処理されたか」を
  * 一目で分かるようにするのが狙い。
  *
- * <p>対象 MP3 の列挙は {@link Mp3FileFinder} に切り出してあり、{@code transcribe-cpp-all} と共用する。
+ * <p>対象 MP3 の列挙は {@link Mp3FileFinder} に切り出してあり、{@code transcribe-ffm-all} と共用する。
  */
 @Slf4j
 @Component

@@ -636,21 +636,32 @@ java "-Dspring.shell.interactive.enabled=false" "-Dtranscribe.whisper.engine=cpp
 > **[docs/ENGINE_BENCHMARK.md](docs/ENGINE_BENCHMARK.md)** を参照してください。
 > Mac / Ubuntu で同じ手順を回せば、そのまま比較できるように書いてあります。
 
-## whisper.cpp を JVM 内で呼ぶ `transcribe-cpp`（FFM）
+## whisper.cpp を JVM 内で呼ぶ `transcribe-ffm`（FFM）
 
 whisper.cpp を使う経路はこのアプリに **2 つ**あります。名前が似ているので、まずここで区別してください。
 
-| | `transcribe --engine cpp` | `transcribe-cpp` |
+| | `transcribe --engine cpp` | `transcribe-ffm` |
 | --- | --- | --- |
 | 呼び方 | 外部バイナリ `whisper-cli` を起動 | JVM 内から FFM（Panama）で直接呼ぶ |
 | 必要なもの | ffmpeg + whisper-cli + モデル | ffmpeg + モデル（Windows はこれだけ） |
 | ライブラリ | なし | [whisper-ffm](https://github.com/juju351nicu/whisper-ffm)（`jp.clip:whisper-ffm`） |
 | 設定 | `transcribe.whisper.cpp.*` | `transcribe.ffm.*` |
 | 分割 part | 設定次第（mp3 / wav） | 常に wav（16kHz モノラル） |
-| 出力フォルダ | `transcribe_<base>` | `transcribe-cpp_<base>` |
+| 出力フォルダ | `transcribe_<base>` | `transcribe-ffm_<base>` |
 | 対応 OS | whisper-cli を入れた OS すべて | 現状 Windows のみ（下記） |
 
-**使い分けの目安**: Windows では `transcribe-cpp` が追加インストール不要で速い（i5-1335U / small で
+> **旧名 `transcribe-cpp` について。** どちらも中身は whisper.cpp なので、`transcribe-cpp` と
+> `transcribe --engine cpp` が別物であることが名前から分からず紛らわしかったため `transcribe-ffm` に
+> 改名しました。旧名は `@Command(alias = ...)` で残してあるので `transcribe-cpp` でも動きます。
+> ただし**出力フォルダの既定は `transcribe-ffm_<base>` に変わりました**。改名前に作った
+> `transcribe-cpp_*` フォルダは認識されず作り直しになるので、残しておきたい場合は先に改名してください。
+>
+> ```powershell
+> Get-ChildItem "C:\Users\<user>\Music" -Directory -Filter 'transcribe-cpp_*' |
+>     Rename-Item -NewName { $_.Name -replace '^transcribe-cpp_', 'transcribe-ffm_' }
+> ```
+
+**使い分けの目安**: Windows では `transcribe-ffm` が追加インストール不要で速い（i5-1335U / small で
 faster-whisper の約 2.3〜3.5 倍）。Mac / Linux では whisper-ffm の jar に同梱されているネイティブが
 Windows 用だけなので、`transcribe --engine cpp`（whisper-cli）を使ってください。OS プロファイルで
 Mac / Linux は `engine=cpp` が既定になっています。
@@ -666,19 +677,19 @@ cd whisper-ffm
 ```
 
 Windows 以外では `installNatives` 用のネイティブが無くても jar は作れます（ビルドの依存解決だけ通ります）。
-その状態で `transcribe-cpp` を実行すると起動時に失敗するので、その OS では `transcribe` を使ってください。
+その状態で `transcribe-ffm` を実行すると起動時に失敗するので、その OS では `transcribe` を使ってください。
 
 ### 使い方
 
 ```powershell
-# transcribe と同じ使い方。出力は入力と同階層の transcribe-cpp_<base>\<base>_all.txt
-.\transcribe-cpp.bat "C:\Users\<user>\Music\sample_001.MP3"
+# transcribe と同じ使い方。出力は入力と同階層の transcribe-ffm_<base>\<base>_all.txt
+.\transcribe-ffm.bat "C:\Users\<user>\Music\sample_001.MP3"
 
 # フォルダ一括（transcribe-all の FFM 版）
-.\transcribe-cpp-all.bat -d "C:\Users\<user>\Music"
+.\transcribe-ffm-all.bat -d "C:\Users\<user>\Music"
 ```
 
-Mac / Linux では `./transcribe-cpp.sh` / `./transcribe-cpp-all.sh` です（ネイティブを用意した場合）。
+Mac / Linux では `./transcribe-ffm.sh` / `./transcribe-ffm-all.sh` です（ネイティブを用意した場合）。
 
 | オプション | 短縮 | 既定 | 説明 |
 | --- | --- | --- | --- |
@@ -686,7 +697,7 @@ Mac / Linux では `./transcribe-cpp.sh` / `./transcribe-cpp-all.sh` です（�
 | `--model` | `-m` | `small` | ggml モデル名（`transcribe.ffm.model-dir` の `ggml-<名前>.bin`）またはパス |
 | `--language` | `-l` | `Japanese` | `Japanese` / `ja` / `auto` |
 | `--segment-time` | | `600` | 分割秒数 |
-| `--output-dir` | `-o` | `transcribe-cpp_<base>` | 出力フォルダ |
+| `--output-dir` | `-o` | `transcribe-ffm_<base>` | 出力フォルダ |
 | `--force` | | `false` | 済み part も再実行 |
 | `--threads` | `-t` | `0` → `transcribe.ffm.threads` | スレッド数 |
 | `--vad` | | 設定 `transcribe.ffm.vad`（既定 false） | `--vad` で有効、`--vad false` で無効。省略時は設定に従う |
@@ -745,7 +756,7 @@ whisper.cpp は 30 秒ウィンドウごとに前の出力を次のプロンプ�
 $jar = "target\transcribe-shell-0.0.1-SNAPSHOT.jar"
 java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" `
   "-Dtranscribe.ffm.carry-initial-prompt=true" `
-  -jar $jar transcribe-cpp "C:\...\x.MP3" -o "C:\...\transcribe-cpp_x_carry"
+  -jar $jar transcribe-ffm "C:\...\x.MP3" -o "C:\...\transcribe-ffm_x_carry"
 ```
 
 ログの「設定: …」「デコーダ: …」の行に実際の値が出るので、狙った条件で走っているか確認できます。
@@ -895,3 +906,12 @@ transcribe.whisper.cpp.model-dir=${user.home}\\whisper-models
 
 > いずれの拡張も現状の土台にそのまま乗る。着手時は設計確認後に実装し、
 > 外部 API を使う変更は実ビルドでも確認する。
+
+---
+
+## ライセンス
+
+Apache License, Version 2.0（[LICENSE](LICENSE)）。同梱する依存の帰属表示は [NOTICE](NOTICE) にあります。
+
+`ffmpeg` / `whisper-ctranslate2` / `openai-whisper` / `whisper-cli` は別プロセスとして呼ぶだけで、
+このリポジトリには含まれません。各自でインストールし、それぞれのライセンスに従ってください。

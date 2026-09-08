@@ -103,7 +103,7 @@ class FfmpegServiceTest {
 
 	@Test
 	void 形式を明示すると設定に関係なくその形式で分割する(@TempDir Path dir) {
-		// transcribe-cpp（FFM）は WAV しか読めないため、設定が mp3 のままでも WAV を指定して呼ぶ。
+		// transcribe-ffm（FFM）は WAV しか読めないため、設定が mp3 のままでも WAV を指定して呼ぶ。
 		Path src = dir.resolve("sample_001.MP3");
 		when(processRunner.run(anyList(), eq(dir))).thenReturn(0);
 

@@ -1,5 +1,5 @@
 @echo off
-rem transcribe-cpp launcher: run  transcribe-cpp "path\to.mp3"  (or drag a .mp3 onto this file).
+rem transcribe-ffm launcher: run  transcribe-ffm "path\to.mp3"  (or drag a .mp3 onto this file).
 rem Uses whisper.cpp via FFM/Panama inside the JVM (no Python, no whisper-cli).
 rem --enable-native-access is required for FFM downcalls (otherwise the JDK prints a warning).
 rem JAR is resolved from this script's own folder (%~dp0).
@@ -11,6 +11,6 @@ if not exist "%JAR%" (
   pause
   exit /b 1
 )
-java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" -jar "%JAR%" transcribe-cpp %*
+java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" -jar "%JAR%" transcribe-ffm %*
 pause
 endlocal

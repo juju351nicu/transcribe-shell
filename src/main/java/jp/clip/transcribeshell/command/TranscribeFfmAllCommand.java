@@ -13,6 +13,7 @@ import jp.clip.transcribeshell.config.TranscribeProperties;
 import jp.clip.transcribeshell.service.FfmOptions;
 import jp.clip.transcribeshell.service.FfmTranscribeService;
 import jp.clip.transcribeshell.service.Mp3FileFinder;
+import jp.clip.transcribeshell.service.NativeUnavailableException;
 import jp.clip.transcribeshell.service.TranscribeResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,10 @@ import lombok.extern.slf4j.Slf4j;
  * フォルダ直下の未処理 MP3 を whisper.cpp（FFM）でまとめて文字起こしするコマンド。
  *
  * <p>{@link TranscribeAllCommand} の FFM 版。{@link FfmTranscribeService} を各ファイルに対して呼ぶだけなので
- * 冪等性はそのまま活きる（出力フォルダ {@code transcribe-cpp_<base>} に {@code .txt} がそろっていれば何もしない）。
+ * 冪等性はそのまま活きる（出力フォルダ {@code transcribe-ffm_<base>} に {@code .txt} がそろっていれば何もしない）。
  * 1 件失敗してもバッチは止めず、最後に「処理／スキップ／失敗」の件数サマリを出す。
+ * ただし {@link NativeUnavailableException}（この OS 用のネイティブが無い）だけは環境の問題で、
+ * 残りを試しても全件同じ理由で失敗するので、その場で打ち切って残件数を報告する。
  *
  * <p>対象 MP3 の列挙は {@link Mp3FileFinder} を {@code transcribe-all} と共用する。
  * 走査フォルダの既定値も {@code transcribe.default-dir} を共用する。
@@ -36,8 +39,10 @@ public class TranscribeFfmAllCommand {
 	private final Mp3FileFinder mp3FileFinder;
 	private final TranscribeProperties properties;
 
-	@Command(name = "transcribe-cpp-all", description = "フォルダ直下の未処理MP3をwhisper.cpp(FFM)でまとめて文字起こしする")
-	public String transcribeCppAll(
+	// alias は旧名（TranscribeFfmCommand と同じ理由）
+	@Command(name = "transcribe-ffm-all", alias = "transcribe-cpp-all",
+			description = "フォルダ直下の未処理MP3をwhisper.cpp(FFM)でまとめて文字起こしする")
+	public String transcribeFfmAll(
 			@Option(shortName = 'd', longName = "dir", description = "走査するフォルダ（省略時は設定 transcribe.default-dir）")
 			String dir,
 			@Option(shortName = 'm', longName = "model", description = "ggmlモデル名またはファイルパス", defaultValue = "small")
@@ -69,7 +74,7 @@ public class TranscribeFfmAllCommand {
 			return "対象なし: " + root;
 		}
 
-		// outputDir=null で各ファイル同階層に transcribe-cpp_<base> を生成する
+		// outputDir=null で各ファイル同階層に transcribe-ffm_<base> を生成する
 		FfmOptions options = FfmOptions.builder()
 				.model(model)
 				.language(language)
@@ -96,6 +101,13 @@ public class TranscribeFfmAllCommand {
 				} else {
 					skipped++;
 				}
+			} catch (NativeUnavailableException e) {
+				// 環境の問題なので、残りを試しても全件同じ理由で失敗する。ここで打ち切る。
+				// catch(Exception) より前に置く必要がある（部分型なので後ろだとコンパイルエラー）
+				int remaining = targets.size() - index;
+				log.error("中断: {}", e.getMessage());
+				return String.format("中断: ネイティブライブラリを読み込めないため残り %d 件を処理していません%n%s%n処理: %d件 / スキップ: %d件 / 失敗: %d件",
+						remaining, e.getMessage(), processed, skipped, failed);
 			} catch (Exception e) {
 				// 1 件の失敗でバッチを止めない。原因を残して次へ
 				failed++;

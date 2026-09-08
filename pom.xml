@@ -13,18 +13,25 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>transcribe-shell</name>
 	<description>CLI tool for MP3 transcription using Spring Shell and Whisper</description>
-	<url/>
+	<url>https://github.com/juju351nicu/transcribe-shell</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<id>juju351nicu</id>
+			<url>https://github.com/juju351nicu</url>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/juju351nicu/transcribe-shell.git</connection>
+		<developerConnection>scm:git:git@github.com:juju351nicu/transcribe-shell.git</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/juju351nicu/transcribe-shell</url>
 	</scm>
 	<properties>
 		<java.version>25</java.version>
@@ -37,7 +44,7 @@
 		</dependency>
 
 		<!--
-			transcribe-cpp コマンド用。whisper.cpp を FFM（Panama）で JVM 内から直接呼ぶ（Python も whisper-cli も不要）。
+			transcribe-ffm コマンド用。whisper.cpp を FFM（Panama）で JVM 内から直接呼ぶ（Python も whisper-cli も不要）。
 			Maven Central には無いので、各マシンで一度ローカルリポジトリへ入れる:
 			  git clone https://github.com/juju351nicu/whisper-ffm
 			  cd whisper-ffm && ./gradlew installNatives publishToMavenLocal   (Windows は .\gradlew.bat)
@@ -48,7 +55,7 @@
 		<dependency>
 			<groupId>jp.clip</groupId>
 			<artifactId>whisper-ffm</artifactId>
-			<version>2.0.1</version>
+			<version>2.0.2</version>
 		</dependency>
 
 		<dependency>

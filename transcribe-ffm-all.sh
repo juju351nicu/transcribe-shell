@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# transcribe-cpp-all launcher (Mac / Linux).
-#   ./transcribe-cpp-all.sh -d "/path/to/folder" [options]
+# transcribe-ffm-all launcher (Mac / Linux).
+#   ./transcribe-ffm-all.sh -d "/path/to/folder" [options]
 #
 # 注意: jar に同梱されているネイティブライブラリは Windows 用だけなので、Mac / Linux では
 # whisper-ffm をその OS でビルドして publishToMavenLocal し直すまでこのコマンドは失敗する。
@@ -16,4 +16,4 @@ if [[ ! -f "$JAR" ]]; then
 fi
 
 exec java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" \
-  -jar "$JAR" transcribe-cpp-all "$@"
+  -jar "$JAR" transcribe-ffm-all "$@"

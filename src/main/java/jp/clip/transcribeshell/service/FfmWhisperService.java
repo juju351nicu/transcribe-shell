@@ -94,7 +94,16 @@ public class FfmWhisperService {
 						String.format(Locale.ROOT, "%.2f", result.realTimeFactor()));
 			}
 		} catch (WhisperException e) {
+			// ネイティブが読み込めなかった場合は「音声 1 件の失敗」ではなく環境の問題なので区別する。
+			// whisper-ffm 2.0.2 以降は UnsatisfiedLinkError を WhisperException に包んでくれる
+			if (e.getCause() instanceof LinkageError) {
+				throw new NativeUnavailableException(e.getCause());
+			}
 			throw new IllegalStateException("whisper.cpp の処理に失敗しました: " + e.getMessage(), e);
+		} catch (LinkageError e) {
+			// 包まれずに出てくる経路も残る（FFM の downcall がシンボルを引けない場合など）。
+			// LinkageError は Error なので上位の catch(Exception) では捕まらない。ここで例外に変換する
+			throw new NativeUnavailableException(e);
 		}
 		return pending.size();
 	}

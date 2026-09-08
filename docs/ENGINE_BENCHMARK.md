@@ -220,12 +220,12 @@ $gz.Write($bytes, 0, $bytes.Length); $gz.Close()
 
 ---
 
-## 追記: 4 番目のエンジン — FFM（`transcribe-cpp`、2026-09-08）
+## 追記: 4 番目のエンジン — FFM（`transcribe-ffm`、2026-09-08）
 
 whisper.cpp を**外部バイナリではなく JVM 内から FFM（Panama）で直接呼ぶ**経路を追加した。
 ライブラリは [whisper-ffm](https://github.com/juju351nicu/whisper-ffm)（`jp.clip:whisper-ffm`）で、
 whisper.cpp v1.9.3 のネイティブを jar に同梱している。Windows は追加インストールが要らない。
-コマンドは `transcribe-cpp` / `transcribe-cpp-all`、設定は `transcribe.ffm.*`（`transcribe.whisper.cpp.*` とは別）。
+コマンドは `transcribe-ffm` / `transcribe-ffm-all`、設定は `transcribe.ffm.*`（`transcribe.whisper.cpp.*` とは別）。
 
 ### 速度（Windows / i5-1335U / CPU / small）
 

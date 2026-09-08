@@ -3,7 +3,7 @@ package jp.clip.transcribeshell.service;
 import lombok.Builder;
 
 /**
- * {@code transcribe-cpp} コマンドのオプション一式。
+ * {@code transcribe-ffm} コマンドのオプション一式。
  *
  * <p>record なので値で等価比較でき、コマンドのテストで「解析結果がそのまま渡ったか」を 1 つの {@code eq} で検証できる。
  * 要素が 4 個を超えるため {@link Builder} を付けてある。位置引数の羅列
@@ -19,7 +19,7 @@ import lombok.Builder;
  * @param model       モデル名またはモデルファイルのパス
  * @param language    言語（{@code Japanese} / {@code ja} / {@code auto}）
  * @param segmentTime 分割秒数
- * @param outputDir   出力フォルダ。null/空なら入力と同階層に {@code transcribe-cpp_<base>} を生成
+ * @param outputDir   出力フォルダ。null/空なら入力と同階層に {@code transcribe-ffm_<base>} を生成
  * @param force       true なら文字起こし済み part も再実行
  * @param threads     スレッド数。0 なら設定 {@code transcribe.ffm.threads}
  * @param vad         VAD を使うか。null なら設定 {@code transcribe.ffm.vad}

@@ -27,7 +27,7 @@ class FfmWhisperServiceTest {
 
 	private final FfmWhisperService service = new FfmWhisperService(properties);
 
-	/** コマンドで何も指定しなかったときのオプション（{@code transcribe-cpp -f x.mp3} 相当）。 */
+	/** コマンドで何も指定しなかったときのオプション（{@code transcribe-ffm -f x.mp3} 相当）。 */
 	private static FfmOptions defaultOptions() {
 		return FfmOptions.builder()
 				.model("small")

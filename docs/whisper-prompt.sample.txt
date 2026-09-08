@@ -1,4 +1,4 @@
-# transcribe-cpp の初期プロンプトのサンプル。
+# transcribe-ffm の初期プロンプトのサンプル。
 #
 # 使い方: このファイルをホーム直下に whisper-prompt.txt という名前でコピーし、実際の参加者名に書き換える。
 #   Windows: copy docs\whisper-prompt.sample.txt %USERPROFILE%\whisper-prompt.txt
@@ -19,7 +19,8 @@
 # - 末尾ほど音声に近いので、よく発言する人を後ろに置く
 # - 読みが珍しい名前は「姓F（いがらし）さん」のように読みを添える。ただし読みを添えても
 #   漢字にならず音だけ拾うことがある（実測）
-# - 音声全体に効かせたい場合は transcribe.ffm.carry-initial-prompt=true も併せて試す
+# - transcribe.ffm.carry-initial-prompt=true は勧めない。2026-09-08 の実測では固有名詞は良くなったが、
+#   毎ウィンドウ前置されるこのプロンプト自体が出力に混ざり、同じ行が 42 回繰り返された
 定例会議です。参加者は、
 田中さん、鈴木さん、佐藤（さとう）さん、
 高橋さん、渡辺さん、伊藤さんです。

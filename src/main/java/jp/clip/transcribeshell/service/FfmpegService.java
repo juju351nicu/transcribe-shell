@@ -46,7 +46,7 @@ public class FfmpegService {
 	/**
 	 * 分割形式を呼び出し側が指定する版。
 	 *
-	 * <p>{@code transcribe-cpp}（FFM）は 16kHz モノラルの WAV しか読めないため、設定に関係なく
+	 * <p>{@code transcribe-ffm}（FFM）は 16kHz モノラルの WAV しか読めないため、設定に関係なく
 	 * {@link PartFormat#WAV} を渡す。既定の {@code transcribe} 系は上の 3 引数版を使い、
 	 * 設定と既存 part から形式を決める（挙動は従来どおり）。
 	 *

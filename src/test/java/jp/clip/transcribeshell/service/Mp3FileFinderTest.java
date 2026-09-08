@@ -12,7 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * {@link Mp3FileFinder} の抽出規則を検証する。
  *
- * <p>{@code transcribe-all} と {@code transcribe-cpp-all} が共用する部分なので、
+ * <p>{@code transcribe-all} と {@code transcribe-ffm-all} が共用する部分なので、
  * 規則をここ 1 か所で固定する。
  */
 class Mp3FileFinderTest {

@@ -1,6 +1,7 @@
 package jp.clip.transcribeshell.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,11 +18,32 @@ class WhisperEngineTest {
 	}
 
 	@Test
-	void 未設定や未知の値は既定のfasterとして扱う() {
-		// 設定ミスで実行そのものを止めるより、従来どおり既定エンジンで動かす方が運用事故が小さい。
+	void 未設定と空は既定のfasterとして扱う() {
+		// 「設定していない」は正常な状態。既定エンジンで動く
 		assertThat(WhisperEngine.from(null)).isEqualTo(WhisperEngine.FASTER);
 		assertThat(WhisperEngine.from("")).isEqualTo(WhisperEngine.FASTER);
-		assertThat(WhisperEngine.from("whisper.cpp")).isEqualTo(WhisperEngine.FASTER);
+		assertThat(WhisperEngine.from("   ")).isEqualTo(WhisperEngine.FASTER);
+	}
+
+	/**
+	 * 未知の値は例外にする。
+	 *
+	 * <p>以前は faster に丸めていたが、{@code engine=fasetr} と打ち間違えても、
+	 * {@code engine=ffm} と勘違いして書いても、黙って faster-whisper が起動していた。
+	 * 意図と違うエンジンが静かに動く方が原因究明に時間がかかる。
+	 */
+	@Test
+	void 未知の値は有効値を示して例外にする() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> WhisperEngine.from("fasetr"))
+				.withMessageContaining("faster, openai, cpp");
+
+		// FFM は engine では選べない（transcribe-ffm という別コマンド）ことを案内する
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> WhisperEngine.from("ffm"))
+				.withMessageContaining("transcribe-ffm");
+
+		assertThatIllegalArgumentException().isThrownBy(() -> WhisperEngine.from("whisper.cpp"));
 	}
 
 	@Test
