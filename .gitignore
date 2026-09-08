@@ -51,10 +51,14 @@ part_*.txt
 part_*.json
 *_all.txt
 transcribe_*/
+transcribe-cpp_*/
 
 ### Whisper models ###
 *.bin
 models/
+
+### 初期プロンプト（参加者名を書くのでコミットしない。書き方は docs/whisper-prompt.sample.txt） ###
+whisper-prompt.txt
 
 ### Secrets and local credentials ###
 .env

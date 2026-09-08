@@ -40,7 +40,23 @@ public class FfmpegService {
 	 * @return 実際に分割を実行したら true、スキップしたら false
 	 */
 	public boolean split(Path src, Path outputDir, int segmentTime) {
-		PartFormat format = PartFormat.resolve(properties, outputDir);
+		return split(src, outputDir, segmentTime, PartFormat.resolve(properties, outputDir));
+	}
+
+	/**
+	 * 分割形式を呼び出し側が指定する版。
+	 *
+	 * <p>{@code transcribe-cpp}（FFM）は 16kHz モノラルの WAV しか読めないため、設定に関係なく
+	 * {@link PartFormat#WAV} を渡す。既定の {@code transcribe} 系は上の 3 引数版を使い、
+	 * 設定と既存 part から形式を決める（挙動は従来どおり）。
+	 *
+	 * @param src         入力ファイル
+	 * @param outputDir   出力フォルダ
+	 * @param segmentTime 分割秒数
+	 * @param format      分割形式
+	 * @return 今回 ffmpeg を実行したら true、既存 part があってスキップしたら false
+	 */
+	public boolean split(Path src, Path outputDir, int segmentTime, PartFormat format) {
 		String firstPart = format.firstPartFileName();
 		if (Files.exists(outputDir.resolve(firstPart))) {
 			log.info("[3/4] 分割: 既存のためスキップ ({} あり)", firstPart);

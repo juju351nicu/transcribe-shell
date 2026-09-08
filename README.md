@@ -636,6 +636,106 @@ java "-Dspring.shell.interactive.enabled=false" "-Dtranscribe.whisper.engine=cpp
 > **[docs/ENGINE_BENCHMARK.md](docs/ENGINE_BENCHMARK.md)** を参照してください。
 > Mac / Ubuntu で同じ手順を回せば、そのまま比較できるように書いてあります。
 
+## whisper.cpp を JVM 内で呼ぶ `transcribe-cpp`（FFM）
+
+whisper.cpp を使う経路はこのアプリに **2 つ**あります。名前が似ているので、まずここで区別してください。
+
+| | `transcribe --engine cpp` | `transcribe-cpp` |
+| --- | --- | --- |
+| 呼び方 | 外部バイナリ `whisper-cli` を起動 | JVM 内から FFM（Panama）で直接呼ぶ |
+| 必要なもの | ffmpeg + whisper-cli + モデル | ffmpeg + モデル（Windows はこれだけ） |
+| ライブラリ | なし | [whisper-ffm](https://github.com/juju351nicu/whisper-ffm)（`jp.clip:whisper-ffm`） |
+| 設定 | `transcribe.whisper.cpp.*` | `transcribe.ffm.*` |
+| 分割 part | 設定次第（mp3 / wav） | 常に wav（16kHz モノラル） |
+| 出力フォルダ | `transcribe_<base>` | `transcribe-cpp_<base>` |
+| 対応 OS | whisper-cli を入れた OS すべて | 現状 Windows のみ（下記） |
+
+**使い分けの目安**: Windows では `transcribe-cpp` が追加インストール不要で速い（i5-1335U / small で
+faster-whisper の約 2.3〜3.5 倍）。Mac / Linux では whisper-ffm の jar に同梱されているネイティブが
+Windows 用だけなので、`transcribe --engine cpp`（whisper-cli）を使ってください。OS プロファイルで
+Mac / Linux は `engine=cpp` が既定になっています。
+
+### 準備（whisper-ffm をローカル Maven に入れる）
+
+Maven Central には公開していないため、**各マシンで一度だけ**ローカルリポジトリに入れます。
+
+```bash
+git clone https://github.com/juju351nicu/whisper-ffm
+cd whisper-ffm
+./gradlew installNatives publishToMavenLocal      # Windows は .\gradlew.bat
+```
+
+Windows 以外では `installNatives` 用のネイティブが無くても jar は作れます（ビルドの依存解決だけ通ります）。
+その状態で `transcribe-cpp` を実行すると起動時に失敗するので、その OS では `transcribe` を使ってください。
+
+### 使い方
+
+```powershell
+# transcribe と同じ使い方。出力は入力と同階層の transcribe-cpp_<base>\<base>_all.txt
+.\transcribe-cpp.bat "C:\Users\<user>\Music\sample_001.MP3"
+
+# フォルダ一括（transcribe-all の FFM 版）
+.\transcribe-cpp-all.bat -d "C:\Users\<user>\Music"
+```
+
+Mac / Linux では `./transcribe-cpp.sh` / `./transcribe-cpp-all.sh` です（ネイティブを用意した場合）。
+
+| オプション | 短縮 | 既定 | 説明 |
+| --- | --- | --- | --- |
+| （位置引数） / `--file` | `-f` | — | 入力 MP3 |
+| `--model` | `-m` | `small` | ggml モデル名（`transcribe.ffm.model-dir` の `ggml-<名前>.bin`）またはパス |
+| `--language` | `-l` | `Japanese` | `Japanese` / `ja` / `auto` |
+| `--segment-time` | | `600` | 分割秒数 |
+| `--output-dir` | `-o` | `transcribe-cpp_<base>` | 出力フォルダ |
+| `--force` | | `false` | 済み part も再実行 |
+| `--threads` | `-t` | `0` → `transcribe.ffm.threads` | スレッド数 |
+| `--vad` | | 設定 `transcribe.ffm.vad`（既定 false） | `--vad` で有効、`--vad false` で無効。省略時は設定に従う |
+| `--beam-search` | | 設定 `transcribe.ffm.beam-search`（既定 false） | 同上。beam search は遅い |
+| `--prompt` | `-p` | 設定 `transcribe.ffm.initial-prompt(-file)` | 初期プロンプト（固有名詞のヒント） |
+
+### 初期プロンプト（固有名詞の取り違え対策）
+
+whisper は「直前に話されていた文字列」を初期プロンプトとして受け取り、その語彙・文体に寄った出力をします。
+参加者名の取り違えは、モデルサイズよりこのプロンプトの方が効きます（実測: 姓C 4→7 回、姓D 0→5 回、
+姓E 2→3 回が正しく出た）。ただし人数が多いと 1 人あたりの効きが薄まるので、**その会議に出る人だけ、
+10 人前後**に絞ります（43 名全員を入れた版は成績が落ちました）。
+
+参加者名を書くファイルなので、リポジトリには置かず**ホーム直下**に置くのが既定です
+（`~/whisper-prompt.txt`）。書き方とサンプルは **[docs/whisper-prompt.sample.txt](docs/whisper-prompt.sample.txt)**。
+
+### 繰り返しループ対策（`transcribe.ffm.max-text-context` / `carry-initial-prompt`）
+
+whisper.cpp は 30 秒ウィンドウごとに前の出力を次のプロンプトへ引き継ぐため、これが繰り返しループの
+伝播経路になります。`transcribe --engine cpp` 側は `-mc 0` で引き継ぎを切っていますが、
+**FFM 側で同じことをすると初期プロンプトも無効になります**（whisper.cpp のプロンプト構築が
+`if (n_max_text_ctx > 0)` の中にあるため）。プロンプトを使う場合は代わりに
+`transcribe.ffm.carry-initial-prompt=true` を試してください。初期プロンプトが毎ウィンドウ前置され、
+引き継ぎは今回のウィンドウの出力だけに限定されます。まだ実測していないため既定は whisper.cpp と同じです。
+
+### VAD とデコーダの既定値（実測に基づく）
+
+`transcribe.ffm.*` の既定は、ライブラリ（whisper-ffm）の既定 = whisper.cpp の既定とは意図的に違います。
+根拠は実測で、詳細は whisper-ffm の `docs/plan-ffm-v2.md`「(a) の実測」にあります。
+
+| 設定 | このアプリの既定 | whisper.cpp の既定 | 理由 |
+| --- | --- | --- | --- |
+| `vad` | `false` | `false` | on だと速いが、発話区間を繋ぎ合わせる方式のため繋ぎ目の文をまるごと落とす（文字数が 3 割減） |
+| `best-of` | `-1` | `5` | 5 にしても処理時間は同じで文字数はむしろ減り、ループ抑制効果も確認できなかった |
+| `temperature-increment` | `0.4` | `0.2` | 同上 |
+| `beam-size` | `2` | `5` | 速度優先 |
+| `suppress-non-speech-tokens` | `true` | `false` | 議事録では記号の注記が邪魔（ただし `【】` は whisper.cpp の抑制対象外） |
+
+再ビルドせずに A/B できます。
+
+```powershell
+$jar = "target\transcribe-shell-0.0.1-SNAPSHOT.jar"
+java --enable-native-access=ALL-UNNAMED "-Dspring.shell.interactive.enabled=false" `
+  "-Dtranscribe.ffm.carry-initial-prompt=true" `
+  -jar $jar transcribe-cpp "C:\...\x.MP3" -o "C:\...\transcribe-cpp_x_carry"
+```
+
+ログの「設定: …」「デコーダ: …」の行に実際の値が出るので、狙った条件で走っているか確認できます。
+
 ### エンジン関連の設定項目
 
 ```properties

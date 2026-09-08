@@ -36,6 +36,21 @@
 			<artifactId>spring-shell-starter</artifactId>
 		</dependency>
 
+		<!--
+			transcribe-cpp コマンド用。whisper.cpp を FFM（Panama）で JVM 内から直接呼ぶ（Python も whisper-cli も不要）。
+			Maven Central には無いので、各マシンで一度ローカルリポジトリへ入れる:
+			  git clone https://github.com/juju351nicu/whisper-ffm
+			  cd whisper-ffm && ./gradlew installNatives publishToMavenLocal   (Windows は .\gradlew.bat)
+			Windows 以外では installNatives 用のネイティブが無くても jar は作れる（依存解決だけ通る）。
+			その場合 transcribe-cpp は実行時に失敗するので、transcribe の engine=cpp（whisper-cli）を使う。
+			実行時依存は slf4j-api のみ（Spring Boot が管理するバージョンに揃う）。
+		-->
+		<dependency>
+			<groupId>jp.clip</groupId>
+			<artifactId>whisper-ffm</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>

@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import jp.clip.transcribeshell.config.PartFormat;
 import jp.clip.transcribeshell.config.TranscribeProperties;
 import jp.clip.transcribeshell.process.ProcessRunner;
 
@@ -98,6 +99,32 @@ class FfmpegServiceTest {
 		assertThat(cmd.getValue()).containsExactly(
 				"ffmpeg", "-i", src.toString(), "-f", "segment", "-segment_time", "600",
 				"-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", "part_%03d.wav");
+	}
+
+	@Test
+	void 形式を明示すると設定に関係なくその形式で分割する(@TempDir Path dir) {
+		// transcribe-cpp（FFM）は WAV しか読めないため、設定が mp3 のままでも WAV を指定して呼ぶ。
+		Path src = dir.resolve("sample_001.MP3");
+		when(processRunner.run(anyList(), eq(dir))).thenReturn(0);
+
+		boolean executed = service.split(src, dir, 600, PartFormat.WAV);
+
+		assertThat(executed).isTrue();
+		ArgumentCaptor<List<String>> cmd = ArgumentCaptor.captor();
+		verify(processRunner).run(cmd.capture(), eq(dir));
+		assertThat(cmd.getValue()).containsExactly(
+				"ffmpeg", "-i", src.toString(), "-f", "segment", "-segment_time", "600",
+				"-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", "part_%03d.wav");
+	}
+
+	@Test
+	void 形式を明示した場合もその形式のpart_000があればスキップする(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("part_000.wav"));
+
+		boolean executed = service.split(dir.resolve("src.mp3"), dir, 600, PartFormat.WAV);
+
+		assertThat(executed).isFalse();
+		verifyNoInteractions(processRunner);
 	}
 
 	@Test
