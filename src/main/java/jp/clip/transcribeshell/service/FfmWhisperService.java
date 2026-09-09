@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -84,14 +85,25 @@ public class FfmWhisperService {
 			log.info("      初期プロンプト: {}", config.initialPrompt());
 		}
 
+		List<String> suspicious = new ArrayList<>();
 		try (WhisperEngine engine = WhisperEngine.open(config)) {
 			log.info("      モデル読み込み完了: {} / {}", model.getFileName(), engine.systemInfo());
 			for (Path part : pending) {
 				log.info("      {} ... 実行中", part.getFileName());
 				TranscriptionResult result = engine.transcribe(part);
-				writeTxt(txtFor(part), result);
+				List<String> lines = toLines(result);
+				writeTxt(txtFor(part), lines);
 				log.info("      {} ... done ({} 秒, RTF {})", part.getFileName(), result.elapsedMs() / 1000,
 						String.format(Locale.ROOT, "%.2f", result.realTimeFactor()));
+
+				// 幻聴のループは例外にならないので、書いた後に数えて警告する。詳細は TranscriptQualityCheck の Javadoc
+				TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, result.audioMs());
+				if (check.suspicious(this.properties.getRepetitionWarnLines(), this.properties.getMinCharsPerAudioSecond())) {
+					suspicious.add(part.getFileName().toString());
+					log.warn("      {} ... 要確認: {}", part.getFileName(),
+							check.describe(this.properties.getRepetitionWarnLines(),
+									this.properties.getMinCharsPerAudioSecond()));
+				}
 			}
 		} catch (WhisperException e) {
 			// ネイティブが読み込めなかった場合は「音声 1 件の失敗」ではなく環境の問題なので区別する。
@@ -104,6 +116,12 @@ public class FfmWhisperService {
 			// 包まれずに出てくる経路も残る（FFM の downcall がシンボルを引けない場合など）。
 			// LinkageError は Error なので上位の catch(Exception) では捕まらない。ここで例外に変換する
 			throw new NativeUnavailableException(e);
+		}
+
+		if (!suspicious.isEmpty()) {
+			log.warn("要確認: {}件のpartに品質の警告があります ({})。"
+					+ "該当する .txt を消して --vad を付けて流し直すと直ることがあります（沈黙の多い録音で有効）",
+					suspicious.size(), String.join(", ", suspicious));
 		}
 		return pending.size();
 	}
@@ -229,12 +247,21 @@ public class FfmWhisperService {
 	}
 
 	/** 1 行 1 セグメントで書き出す（whisper-cli / faster-whisper の txt 出力と同じ読みやすさにする）。 */
-	private void writeTxt(Path txt, TranscriptionResult result) {
-		String content = result.segments().stream()
+	/**
+	 * 書き出す行を組み立てる。1 行 1 セグメントで、前後の空白を除き、空のセグメントは捨てる。
+	 *
+	 * <p>{@link TranscriptQualityCheck} にも同じ行を渡すため、書き出しと検査で対象がずれない。
+	 */
+	static List<String> toLines(TranscriptionResult result) {
+		return result.segments().stream()
 				.map(Segment::text)
 				.map(String::strip)
 				.filter(StringUtils::hasText)
-				.collect(Collectors.joining("\n", "", "\n"));
+				.toList();
+	}
+
+	private void writeTxt(Path txt, List<String> lines) {
+		String content = lines.stream().collect(Collectors.joining("\n", "", "\n"));
 		try {
 			Files.writeString(txt, content, StandardCharsets.UTF_8);
 		} catch (IOException e) {
