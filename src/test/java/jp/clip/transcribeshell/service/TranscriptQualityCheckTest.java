@@ -6,12 +6,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import jp.clip.transcribeshell.config.FfmProperties;
+
 /**
  * {@link TranscriptQualityCheck} の単体テスト。
  *
- * <p>期待値は実測に合わせている。2026-09-08 に崩壊した part は同一行 55 行連続・音声 1 秒あたり 1.01 文字、
- * 正常な part は最長 2 行・3.83〜5.63 文字だった。既定のしきい値（3 行 / 2.5 文字）がその両方を
- * 正しく振り分けることを固定する。
+ * <p>期待値は実測に合わせている。2026-09-08〜09 の 3 録音 8 part で、崩壊した part は同一行が
+ * 16 / 55 / 67 行連続、崩壊していない part の最大は 3 行だった。音声 1 秒あたりの文字数は
+ * 崩壊 1.01 に対して正常 3.39〜5.63 だが、67 行連続した part は 5.07 で捕まらなかったため、
+ * 連続同一行が主の指標で文字数は補助である。
  */
 class TranscriptQualityCheckTest {
 
@@ -105,6 +108,37 @@ class TranscriptQualityCheckTest {
 
 		assertThat(check.charsPerSecond()).isNaN();
 		assertThat(check.suspicious(WARN_LINES, MIN_CHARS)).isFalse();
+	}
+
+	/**
+	 * 既定のしきい値が実測値を正しく振り分けることを固定する。
+	 *
+	 * <p>2026-09-08〜09 の 3 録音 8 part で、崩壊した part は同一行が 16 / 55 / 67 行連続、
+	 * 崩壊していない part の最大は 3 行だった。3 では普通の発話文の重複を誤検知したので 5 にしている。
+	 * ここを緩めると崩壊を見逃し、締めると正常な part を騒がせるので、両側を明示的に固定する。
+	 */
+	@Test
+	void 既定のしきい値は実測値を正しく振り分ける() {
+		FfmProperties defaults = new FfmProperties();
+		int lines = defaults.getRepetitionWarnLines();
+		float chars = defaults.getMinCharsPerAudioSecond();
+
+		// 崩壊側の最小（16 行連続）は検知する
+		assertThat(TranscriptQualityCheck.of(java.util.Collections.nCopies(16, "同じ行"), 600_000L)
+				.suspicious(lines, chars)).isTrue();
+
+		// 崩壊していない側の最大（3 行連続 / 3.39 文字per秒）は警告しない
+		List<String> normal = new java.util.ArrayList<>();
+		for (int i = 0; i < 80; i++) {
+			normal.add("これは通常の発言でおよそ二十五文字ぶんの長さになります" + i);
+		}
+		normal.add("普通の発話文");
+		normal.add("普通の発話文");
+		normal.add("普通の発話文");
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(normal, 600_000L);
+		assertThat(check.repeatedLines()).isEqualTo(3);
+		assertThat(check.charsPerSecond()).isGreaterThan(chars);
+		assertThat(check.suspicious(lines, chars)).isFalse();
 	}
 
 	@Test

@@ -119,8 +119,11 @@ public class FfmWhisperService {
 		}
 
 		if (!suspicious.isEmpty()) {
+			// 直し方を断定しない。--vad が効いたのは沈黙の多い録音の 1 例だけで、
+			// 無音率 0% の part でも 67 行連続した実例がある（docs/ENGINE_BENCHMARK.md）
 			log.warn("要確認: {}件のpartに品質の警告があります ({})。"
-					+ "該当する .txt を消して --vad を付けて流し直すと直ることがあります（沈黙の多い録音で有効）",
+					+ "該当する .txt を消すとその part だけ流し直せます。"
+					+ "沈黙の多い録音では --vad で直った例があります（docs/ENGINE_BENCHMARK.md 参照）",
 					suspicious.size(), String.join(", ", suspicious));
 		}
 		return pending.size();
