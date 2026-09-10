@@ -13,6 +13,10 @@ import java.util.Locale;
  * 「done」と表示され、`.txt` も普通に書かれる。<b>気づけないことが一番の問題</b>なので、
  * 書き出す前に数えて警告する。
  *
+ * <p><b>短い行の連続は数えない。</b>「はい。」のような相槌は自然に 5 行続くことがあり、実際に誤検知した。
+ * 一方、崩壊時に繰り返される行は実測 4 例すべてが 15 文字以上（幻聴も実発話の復唱も文の形をしている）。
+ * そのため既定では 8 文字以下の行の連続を無視する（{@code transcribe.ffm.repetition-min-line-length}）。
+ *
  * <p><b>直さずに警告だけにしている理由。</b> 対処は VAD を有効にすることだが、VAD は逆に
  * 「発話が途切れない録音では文字数が 3 割減る」という副作用がある。崩壊の実例がまだ少ないうちに
  * 自動で切り替えると、正常な録音を壊す方に転びうる。だから判断は人に残し、ここは検知だけを行う。
@@ -30,17 +34,20 @@ public record TranscriptQualityCheck(int repeatedLines, String repeatedText, dou
 	 *
 	 * <p>行は {@code part_*.txt} に書き出すものと同じ（1 行 1 セグメント、空行は除去済み）を渡す。
 	 *
-	 * @param lines   文字起こし結果の行。空でも可
-	 * @param audioMs 入力音声の長さ（ミリ秒）。0 以下なら {@link #charsPerSecond()} は NaN になる
+	 * @param lines                   文字起こし結果の行。空でも可
+	 * @param audioMs                 入力音声の長さ（ミリ秒）。0 以下なら {@link #charsPerSecond()} は NaN になる
+	 * @param minRepeatedLineLength   この文字数以下の行の連続は数えない（0 以下ですべて数える）。
+	 *                                「はい。」のような相槌が自然に何度も続くのを崩壊と誤判定しないため
 	 * @return 検査結果
 	 */
-	public static TranscriptQualityCheck of(List<String> lines, long audioMs) {
+	public static TranscriptQualityCheck of(List<String> lines, long audioMs, int minRepeatedLineLength) {
 		int longestRun = lines.isEmpty() ? 0 : 1;
 		String longestText = "";
 		int run = 1;
 		for (int i = 1; i < lines.size(); i++) {
 			run = lines.get(i).equals(lines.get(i - 1)) ? run + 1 : 1;
-			if (run > longestRun) {
+			// 短い行の連続は相槌なので数えない。長さの根拠は minRepeatedLineLength の説明を参照
+			if (run > longestRun && lines.get(i).length() > minRepeatedLineLength) {
 				longestRun = run;
 				longestText = lines.get(i);
 			}

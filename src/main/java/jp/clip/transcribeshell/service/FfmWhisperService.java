@@ -97,7 +97,8 @@ public class FfmWhisperService {
 						String.format(Locale.ROOT, "%.2f", result.realTimeFactor()));
 
 				// 幻聴のループは例外にならないので、書いた後に数えて警告する。詳細は TranscriptQualityCheck の Javadoc
-				TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, result.audioMs());
+				TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, result.audioMs(),
+						this.properties.getRepetitionMinLineLength());
 				if (check.suspicious(this.properties.getRepetitionWarnLines(), this.properties.getMinCharsPerAudioSecond())) {
 					suspicious.add(part.getFileName().toString());
 					log.warn("      {} ... 要確認: {}", part.getFileName(),

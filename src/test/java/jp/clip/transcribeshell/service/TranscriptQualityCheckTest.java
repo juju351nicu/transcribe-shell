@@ -24,7 +24,7 @@ class TranscriptQualityCheckTest {
 	@Test
 	void 同一行の連続を数える() {
 		TranscriptQualityCheck check = TranscriptQualityCheck.of(
-				List.of("あ", "い", "い", "い", "う"), 10_000L);
+				List.of("あ", "い", "い", "い", "う"), 10_000L, 0);
 
 		assertThat(check.repeatedLines()).isEqualTo(3);
 		assertThat(check.repeatedText()).isEqualTo("い");
@@ -34,7 +34,7 @@ class TranscriptQualityCheckTest {
 	void 連続していない繰り返しは数えない() {
 		// 「はい。」が離れて何度も出るのは相槌として普通に起きる。ここで警告すると誤検知になる
 		TranscriptQualityCheck check = TranscriptQualityCheck.of(
-				List.of("はい。", "そうですね。", "はい。", "わかりました。", "はい。"), 10_000L);
+				List.of("はい。", "そうですね。", "はい。", "わかりました。", "はい。"), 10_000L, 0);
 
 		assertThat(check.repeatedLines()).isEqualTo(1);
 		assertThat(check.suspicious(WARN_LINES, 0.0f)).isFalse();
@@ -44,7 +44,7 @@ class TranscriptQualityCheckTest {
 	void 崩壊したpartを検知する() {
 		// 同じ 1 行だけが 55 行。実測どおりの形
 		List<String> lines = java.util.Collections.nCopies(55, "幻聴の一行");
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L, 0);
 
 		assertThat(check.repeatedLines()).isEqualTo(55);
 		assertThat(check.suspicious(WARN_LINES, MIN_CHARS)).isTrue();
@@ -62,7 +62,7 @@ class TranscriptQualityCheckTest {
 		}
 		lines.add("はい。");
 		lines.add("はい。");
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L, 0);
 
 		assertThat(check.repeatedLines()).isEqualTo(2);
 		assertThat(check.charsPerSecond()).isGreaterThan(MIN_CHARS);
@@ -73,7 +73,7 @@ class TranscriptQualityCheckTest {
 	void 音声長あたりの文字数で連続していない崩壊も拾う() {
 		// 連続同一行は無いが、10 分で 60 文字しかない
 		List<String> lines = List.of("あ".repeat(20), "い".repeat(20), "う".repeat(20));
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L, 0);
 
 		assertThat(check.repeatedLines()).isEqualTo(1);
 		assertThat(check.charsPerSecond()).isEqualTo(0.1);
@@ -83,7 +83,7 @@ class TranscriptQualityCheckTest {
 
 	@Test
 	void 空の結果は必ず警告する() {
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(List.of(), 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(List.of(), 600_000L, 0);
 
 		assertThat(check.empty()).isTrue();
 		assertThat(check.repeatedLines()).isZero();
@@ -95,7 +95,7 @@ class TranscriptQualityCheckTest {
 	@Test
 	void しきい値を0以下にするとその指標は無効になる() {
 		List<String> lines = java.util.Collections.nCopies(55, "幻聴の一行");
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 600_000L, 0);
 
 		assertThat(check.suspicious(0, 0.0f)).isFalse();
 		assertThat(check.suspicious(0, MIN_CHARS)).isTrue();
@@ -104,7 +104,7 @@ class TranscriptQualityCheckTest {
 
 	@Test
 	void 音声長が不明なら文字数の指標は使わない() {
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(List.of("あ"), 0L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(List.of("あ"), 0L, 0);
 
 		assertThat(check.charsPerSecond()).isNaN();
 		assertThat(check.suspicious(WARN_LINES, MIN_CHARS)).isFalse();
@@ -123,8 +123,10 @@ class TranscriptQualityCheckTest {
 		int lines = defaults.getRepetitionWarnLines();
 		float chars = defaults.getMinCharsPerAudioSecond();
 
-		// 崩壊側の最小（16 行連続）は検知する
-		assertThat(TranscriptQualityCheck.of(java.util.Collections.nCopies(16, "同じ行"), 600_000L)
+		// 崩壊側の最小（16 行連続）は検知する。実測の幻聴と同じ長さの行を使う
+		assertThat(TranscriptQualityCheck
+				.of(java.util.Collections.nCopies(16, "私は、私のビデオを紹介します。"), 600_000L,
+						defaults.getRepetitionMinLineLength())
 				.suspicious(lines, chars)).isTrue();
 
 		// 崩壊していない側の最大（3 行連続 / 3.39 文字per秒）は警告しない
@@ -135,16 +137,64 @@ class TranscriptQualityCheckTest {
 		normal.add("普通の発話文");
 		normal.add("普通の発話文");
 		normal.add("普通の発話文");
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(normal, 600_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(normal, 600_000L, 0);
 		assertThat(check.repeatedLines()).isEqualTo(3);
 		assertThat(check.charsPerSecond()).isGreaterThan(chars);
 		assertThat(check.suspicious(lines, chars)).isFalse();
 	}
 
+	/**
+	 * 短い行の連続は数えない。
+	 *
+	 * <p>2026-09-10 に「はい。」が 5 行連続して誤検知し、3 分の再実行を無駄にした。相槌は自然に連続する。
+	 * 一方、崩壊時に繰り返される行は実測 4 例すべてが 15 文字以上で、幻聴も実発話の復唱も文の形をしている。
+	 * 回数を上げるのではなく長さで切るのは、<b>長い文が 5 行続くのは崩壊、相槌が 6 行続くのは自然</b>
+	 * という区別をそのまま条件にできるため。
+	 */
+	@Test
+	void 短い行の連続は数えない() {
+		FfmProperties defaults = new FfmProperties();
+		int minLength = defaults.getRepetitionMinLineLength();
+
+		// 相槌が 5 行連続 → 数えない
+		TranscriptQualityCheck aizuchi = TranscriptQualityCheck.of(
+				java.util.Collections.nCopies(5, "はい。"), 10_000L, minLength);
+		assertThat(aizuchi.repeatedLines()).isEqualTo(1);
+		assertThat(aizuchi.suspicious(defaults.getRepetitionWarnLines(), 0.0f)).isFalse();
+
+		// 文の形をした行が 5 行連続 → 数える（実測の幻聴と同じ 15 文字）
+		TranscriptQualityCheck loop = TranscriptQualityCheck.of(
+				java.util.Collections.nCopies(5, "私は、私のビデオを紹介します。"), 10_000L, minLength);
+		assertThat(loop.repeatedLines()).isEqualTo(5);
+		assertThat(loop.suspicious(defaults.getRepetitionWarnLines(), 0.0f)).isTrue();
+	}
+
+	@Test
+	void 短い行を飛ばしても長い行の連続は見つける() {
+		// 相槌の 6 行連続より、文の 5 行連続の方を報告すること
+		List<String> lines = new java.util.ArrayList<>();
+		lines.addAll(java.util.Collections.nCopies(6, "はい。"));
+		lines.add("区切りの一行です。");
+		lines.addAll(java.util.Collections.nCopies(5, "私は、私のビデオを紹介します。"));
+
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 10_000L, 8);
+
+		assertThat(check.repeatedLines()).isEqualTo(5);
+		assertThat(check.repeatedText()).isEqualTo("私は、私のビデオを紹介します。");
+	}
+
+	@Test
+	void 長さのしきい値を0にするとすべての連続を数える() {
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(
+				java.util.Collections.nCopies(5, "はい。"), 10_000L, 0);
+
+		assertThat(check.repeatedLines()).isEqualTo(5);
+	}
+
 	@Test
 	void 長い行は警告メッセージ内で省略する() {
 		List<String> lines = java.util.Collections.nCopies(5, "あ".repeat(40));
-		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 1_000L);
+		TranscriptQualityCheck check = TranscriptQualityCheck.of(lines, 1_000L, 0);
 
 		assertThat(check.describe(WARN_LINES, 0.0f)).contains("あ".repeat(20) + "…");
 	}

@@ -26,6 +26,10 @@ import lombok.extern.slf4j.Slf4j;
  * <p>出力フォルダの既定は {@code transcribe-ffm_<base>}。{@code transcribe} の {@code transcribe_<base>} と
  * 分けているのは、同じ録音を両エンジンで処理して比べられるようにするためと、
  * {@code part_*.mp3} と {@code part_*.wav} が混ざらないようにするため。
+ *
+ * <p>結合ファイル名は {@link DatedBaseName} で日付部分を展開する（{@code 260910_1539} →
+ * {@code 2026-09-10_1539_all.txt}）。{@code transcribe} 側は従来どおり {@code <base>_all.txt} で、
+ * 共有している {@link TranscriptMergeService} には手を入れていない。
  */
 @Slf4j
 @Service
@@ -67,7 +71,9 @@ public class FfmTranscribeService {
 
 		int transcribedParts = ffmWhisperService.transcribeAll(outDir, model, options);
 
-		Path merged = mergeService.merge(outDir, base);
+		// 結合ファイル名だけ日付を yyyy-MM-dd に展開する（260910_1539 → 2026-09-10_1539_all.txt）。
+		// フォルダ名と part_*.txt は元のまま。変換は DatedBaseName の Javadoc を参照
+		Path merged = mergeService.merge(outDir, DatedBaseName.of(base));
 		log.info("結合完了: {}", merged);
 		return new TranscribeResult(merged, splitExecuted, transcribedParts);
 	}
