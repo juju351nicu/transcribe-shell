@@ -46,7 +46,28 @@ class TranscriptMergeServiceTest {
 		assertThat(Files.readString(merged, StandardCharsets.UTF_8)).isEqualTo("あ\n\nい\n");
 	}
 
+	/**
+	 * {@code part_<数字>.txt} 以外は結合対象にしない。
+	 *
+	 * <p>2026-09-15 に、VAD の有無を比べるため手で退避した {@code part_000_vadoff.txt} が結合され、
+	 * 同じ内容が二重に入った結合ファイルができた。出力フォルダは利用者が覗く場所なので、
+	 * 比較用のコピーが置かれることは普通に起きる。名前の完全一致で弾く。
+	 */
 	@Test
+	void part_連番_txt以外は結合対象にしない(@TempDir Path dir) throws IOException {
+		Files.writeString(dir.resolve("part_000.txt"), "本体\n", StandardCharsets.UTF_8);
+		Files.writeString(dir.resolve("part_000_vadoff.txt"), "退避\n", StandardCharsets.UTF_8);
+		Files.writeString(dir.resolve("part_000.txt.bak"), "退避\n", StandardCharsets.UTF_8);
+		Files.writeString(dir.resolve("part_backup.txt"), "退避\n", StandardCharsets.UTF_8);
+		Files.writeString(dir.resolve("parts_000.txt"), "別物\n", StandardCharsets.UTF_8);
+
+		Path merged = service.merge(dir, "x");
+
+		assertThat(Files.readString(merged, StandardCharsets.UTF_8)).isEqualTo("本体\n");
+	}
+
+	@Test
+	void 結合対象が無ければ例外(@TempDir Path dir) {	@Test
 	void 結合対象が無ければ例外(@TempDir Path dir) {
 		assertThatThrownBy(() -> service.merge(dir, "x"))
 				.isInstanceOf(IllegalStateException.class)
