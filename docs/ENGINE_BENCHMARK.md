@@ -1,5 +1,11 @@
 # 文字起こしエンジン実測レポート（Phase F-2）
 
+> **普段はこちらを読んでください → [QUALITY_NOTES.md](QUALITY_NOTES.md)**
+>
+> この文書は実測の生ログです。日付ごとに数値と経緯をそのまま残してあり、専門用語も使っています。
+> 「同じ行が繰り返されて内容が消える」問題について、結論と対処だけ知りたい場合は
+> QUALITY_NOTES.md の 1 枚で足ります。
+
 `transcribe.whisper.engine` で選べる 3 エンジンのうち、**faster（whisper-ctranslate2）** と
 **cpp（whisper.cpp / whisper-cli）** を実際の会議録音で比較した記録。
 

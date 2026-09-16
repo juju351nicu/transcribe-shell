@@ -801,6 +801,10 @@ WARN  要確認: 1件のpartに品質の警告があります (part_000.wav)。�
 
 ### 警告が出た part の直し方（3 ステップ）
 
+> **この問題の全体像は [docs/QUALITY_NOTES.md](docs/QUALITY_NOTES.md) にまとめてあります**
+> （何が起きるか / どのくらい起きるか / 効かなかったこと一覧 / 録音側でできること）。
+
+
 **part 単位で作り直せます。** `part_NNN.txt` を消して再実行すると、その part だけ処理され、
 他の part はスキップされて結合し直されます。1 回あたり 10 分の part で 2〜3 分です。
 
@@ -860,7 +864,7 @@ ffmpeg -i "C:\...\part_000.wav" -af "silencedetect=noise=-40dB:d=1.0" -f null -
 ffmpeg -i "C:\...\part_000.wav" -af volumedetect -f null -
 ```
 
-数値と切り分けの経緯は **[docs/ENGINE_BENCHMARK.md](docs/ENGINE_BENCHMARK.md)** にあります。
+まとめは **[docs/QUALITY_NOTES.md](docs/QUALITY_NOTES.md)**、数値と切り分けの経緯は **[docs/ENGINE_BENCHMARK.md](docs/ENGINE_BENCHMARK.md)** にあります。
 
 ### VAD とデコーダの既定値（実測に基づく）
 
